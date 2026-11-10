@@ -1,0 +1,12 @@
+# Python 3.12. Versions as tested.
+claude-agent-sdk==0.2.179   # model calls on the local Claude Code login (no API key)
+anyio==4.16.0
+pydantic==2.14.3
+Scrapy==2.20.0
+parsel==1.12.1
+playwright==1.64.1          # browser fallback; run `playwright install chromium`
+requests==2.34.2
+tldextract==5.4.0
+openpyxl==3.1.5
+pillow==13.0.0              # blank-page check in PDF OCR
+pytest==9.2.0

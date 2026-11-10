@@ -1,0 +1,30 @@
+# Python environments and caches
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.scrapy/
+.browsers/
+
+# Credentials
+*.env
+!*.env.example
+
+# Local lead database, page snapshots, HTTP cache, crawl jobs
+data/
+*.sqlite
+*.sqlite3
+*.db
+
+# Run artefacts: model/search logs, contact and job-ad logs, batch files.
+# They quote pages that name people.
+runs/
+
+# Exports: workbook, CSVs, run report and the full dashboard data carry named contacts,
+# personal phones and e-mails. Only the redacted data.js in the dashboard repository is published.
+output/
+
+# Office lock files and OS clutter
+~$*
+.DS_Store

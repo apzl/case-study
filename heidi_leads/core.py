@@ -651,7 +651,7 @@ def sales_opener(q,components,checked,person='',role='',has_line=False,billing='
     if 'Berlin share unknown' in units:units=''  # company-wide totals are not a Berlin pitch
     seg=segment(q)
     if 'Meters read by hand (upgrade due 2027)' in components:
-        hook=f"Their pages say meters are still read by hand; from 1 Jan 2027 they must be remote-readable. Offer a free check of {('their '+units) if units else 'their buildings'} and a retrofit plan."
+        hook=f"Their pages say meters are still read by hand; under the Heating Cost Ordinance (HKVO) they must become remote-readable. Offer a free check of {('their '+units) if units else 'their buildings'} and a retrofit plan."
     elif 'Provider change announced' in components:
         hook='They have announced a change of metering provider. Offer a side-by-side quote; Heidi can switch even mid-contract.'
     elif billing.startswith('Outside provider:'):

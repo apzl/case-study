@@ -61,6 +61,36 @@ def _header(ws, headers, widths):
     ws.row_dimensions[1].height = 30
 
 
+def _fit(ws, wrap=(), cap=40, wrap_width=None, caps=None, mins=None):
+    """Column widths from the content (90th percentile, so one long outlier doesn't stretch a
+    column), then row heights from the lines each wrapped cell needs. wrap: header names of
+    columns that wrap; their width is wrap_width[name] (default 45)."""
+    import math
+    heads = [c.value for c in ws[1]]
+    widths = {}
+    for j, h in enumerate(heads, 1):
+        letter = get_column_letter(j)
+        if h in wrap:
+            widths[j] = (wrap_width or {}).get(h, 45)
+        else:
+            lens = sorted(len(str(c.value)) for c in ws[letter][1:] if c.value not in (None, ''))
+            p90 = lens[int(len(lens) * 0.9)] if lens else 0
+            widths[j] = max(min(max(p90, 4) + 2, (caps or {}).get(h, cap)), min(len(str(h)) + 2, 14), (mins or {}).get(h, 0))
+        ws.column_dimensions[letter].width = widths[j]
+    wrap_cols = [j for j, h in enumerate(heads, 1) if h in wrap]
+    for r in range(2, ws.max_row + 1):
+        lines = 1
+        for j in wrap_cols:
+            v = ws.cell(r, j).value
+            if v:
+                per_line = max(widths[j] * 1.15, 10)
+                lines = max(lines, sum(math.ceil(max(len(part), 1) / per_line) for part in str(v).split('\n')))
+        ws.row_dimensions[r].height = min(15 * lines + 4, 120)
+    for j in range(1, len(heads) + 1):
+        for c in ws[get_column_letter(j)][1:]:
+            c.alignment = WRAP if j in wrap_cols else TOP
+
+
 def _table(ws, name):
     if ws.max_row < 2: return
     t = Table(displayName=name, ref=f'A1:{get_column_letter(ws.max_column)}{ws.max_row}')
@@ -89,7 +119,7 @@ def _host(u):
 def key_signal(r, col):
     """The single most useful buying signal, for a first-glance read of the list."""
     import re
-    if r[col['Meters read by hand (upgrade due 2027)']]: return 'Meters read by hand: due 2027'
+    if r[col['Meters read by hand (upgrade due 2027)']]: return 'Meters read by hand: HKVO upgrade due'
     if r[col['Provider change signal']]: return 'Provider change: ' + str(r[col['Provider change signal']])
     m = re.search(r'([\d.,]+)\s*units', str(r[col['Apartments']] or ''))
     if m and int(re.sub(r'[.,]', '', m.group(1))) >= 1000: return 'Key account (1,000+ apartments)'
@@ -120,7 +150,7 @@ def write_workbook(path, headers, leads, contacts, evidence, detail_headers, det
         _link(wc.cell(i, 7), f'mailto:{r[6]}' if r[6] else None)
         _link(wc.cell(i, 8), r[7], 'Profile')
         _link(wc.cell(i, 9), r[8], _host(r[8]) if r[8] else None)
-    wc.freeze_panes = 'C2'; _table(wc, 'Contacts')
+    _fit(wc, cap=34); wc.freeze_panes = 'C2'; _table(wc, 'Contacts')
 
     we = wb.create_sheet('Evidence'); _header(we, EVIDENCE_HEADERS, [30, 18, 26, 9, 22, 16, 70, 26, 14])
     first_fact, n_facts = {}, {}
@@ -130,7 +160,7 @@ def write_workbook(path, headers, leads, contacts, evidence, detail_headers, det
         we.cell(i, 7).alignment = WRAP
         _link(we.cell(i, 1), f"'Leads'!B{lead_row[r[0]]}" if r[0] in lead_row else None, internal=True)
         _link(we.cell(i, 8), r[8], _host(r[8]) if r[8] else None)
-    we.freeze_panes = 'B2'; _table(we, 'Evidence')
+    _fit(we, wrap=('Quote (from the page)',), cap=34, wrap_width={'Quote (from the page)': 70}); we.freeze_panes = 'B2'; _table(we, 'Evidence')
 
     # Leads: sales fields only.
     _header(ws, [h for _, h, _, _ in LEADS], [w for _, _, w, _ in LEADS])
@@ -160,7 +190,6 @@ def write_workbook(path, headers, leads, contacts, evidence, detail_headers, det
                 c.fill = PatternFill('solid', fgColor=MINT); c.font = Font(bold=True, color='1E5C33', underline='single' if c.hyperlink else None)
             elif kind == 'status': c.value = 'To call'
             elif kind == 'date': c.number_format = 'DD.MM.YYYY'
-        ws.row_dimensions[i].height = 62
     n = ws.max_row
     letter = {h: get_column_letter(j) for j, (_, h, _, _) in enumerate(LEADS, 1)}
     for tier, colour in ((('A', GREEN), ('B', BLUE), ('C', OCHRE)) if n >= 2 else ()):
@@ -168,11 +197,15 @@ def write_workbook(path, headers, leads, contacts, evidence, detail_headers, det
                                       fill=PatternFill(fill_type='solid', bgColor=colour, fgColor=colour), font=Font(bold=True, color='FFFFFF')))
     dv = DataValidation(type='list', formula1='"' + ','.join(STATUS) + '"', allow_blank=True)
     ws.add_data_validation(dv); dv.add(f"{letter['Status']}2:{letter['Status']}{max(n, 2)}")
+    _fit(ws, wrap=('Suggested opener', 'Why this lead', 'Other contacts'), cap=30,
+         wrap_width={'Suggested opener': 62, 'Why this lead': 80, 'Other contacts': 44},
+         caps={'Company': 46, 'Apartments': 44, 'Key signal': 44, 'Role': 30, 'Hiring': 40, 'Billing today': 34},
+         mins={'Status': 19, 'Called on': 12, 'Outcome': 22, 'Notes': 34})
     ws.freeze_panes = 'C2'; _table(ws, 'Leads')
 
     wd = wb.create_sheet('Details'); _header(wd, detail_headers, [14 if h == 'Company ID' else 30 if h == 'Company' else 18 for h in detail_headers])
     for r in details: wd.append(r)
-    wd.freeze_panes = 'C2'; _table(wd, 'Details')
+    _fit(wd, wrap=('All named contacts', 'Fit breakdown'), cap=34, wrap_width={'All named contacts': 50, 'Fit breakdown': 44}); wd.freeze_panes = 'C2'; _table(wd, 'Details')
 
     wg = wb.create_sheet('Guide'); _header(wg, ['Item', 'What it means'], [24, 110])
     for r in GUIDE + definitions:

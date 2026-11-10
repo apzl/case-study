@@ -5,7 +5,6 @@ managers and housing companies, with a source quote behind every fact.
 
 ![Pipeline](docs/pipeline.gif)
 
-Dashboard: [case-study-dashboard](https://github.com/apzl/case-study-dashboard)
 
 ## Requirements
 
